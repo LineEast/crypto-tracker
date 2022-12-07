@@ -14,3 +14,20 @@ create table fiat_history (
 
 	foreign key (fiat_id) references fiat (id)
 );
+
+create table btc_usdt_history (
+	btc_usdt_id uuid not null,
+
+	fiat_id uuid not null,
+	value numeric(16, 16),
+
+	foreign key (fiat_id) references fiat (id),
+	foreign key (btc_usdt_id) references btc_usdt (id)
+);
+
+create table btc_usdt (
+	id uuid default gen_random_uuid() primary key,
+
+	date integer not null,
+	avarage_price numeric(16,16) not null
+);

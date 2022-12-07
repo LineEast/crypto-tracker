@@ -6,6 +6,7 @@ require (
 	github.com/fasthttp/router v1.4.14
 	github.com/go-asphyxia/http v0.0.3
 	github.com/go-asphyxia/middlewares v1.0.4
+	github.com/goccy/go-json v0.9.11
 	github.com/jackc/pgx/v5 v5.2.0
 	github.com/valyala/fasthttp v1.43.0
 )

@@ -10,6 +10,8 @@ github.com/go-asphyxia/http v0.0.3 h1:+97q13CKAOwjvIMKFKDU6zL1GRr8yMqNkvXKx9JKXm
 github.com/go-asphyxia/http v0.0.3/go.mod h1:zt8xW+e/IhpgUlw7TLaSgDd+P39+ZEWvV9SBTr9Jd/s=
 github.com/go-asphyxia/middlewares v1.0.4 h1:3omNGVvz0n7z2PWe5gzPfuBPv/T+za7ofv0dhPf3gD4=
 github.com/go-asphyxia/middlewares v1.0.4/go.mod h1:pohMQe98OiEQ1sPNJdJWsWu62nqt/CeUeP6aL3QqJR0=
+github.com/goccy/go-json v0.9.11 h1:/pAaQDLHEoCq/5FFmSKBswWmK6H0e8g4159Kc/X/nqk=
+github.com/goccy/go-json v0.9.11/go.mod h1:6MelG93GURQebXPDq3khkgXZkazVtN9CRI+MGFi0w8I=
 github.com/google/uuid v1.3.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/jackc/pgpassfile v1.0.0 h1:/6Hmqy13Ss2zCq62VdNG8tM1wchn8zjSGOBJ6icpsIM=
 github.com/jackc/pgpassfile v1.0.0/go.mod h1:CEx0iS5ambNFdcRtxPj5JhEz+xB6uRky5eyVu/W2HEg=

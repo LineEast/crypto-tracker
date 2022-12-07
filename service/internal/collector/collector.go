@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"time"
 
+	json "github.com/goccy/go-json"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/valyala/fasthttp"
@@ -34,7 +35,13 @@ type (
 		FiatID string  `xml:"ID"`
 		Name   string  `xml:"Name"`
 		Code   string  `xml:"CharCode"`
-		Value  float64 `xml:"Value"`
+		Value  float32 `xml:"Value"`
+	}
+
+	BtcUsdt struct {
+		ID           string
+		Time         time.Time `json:"time"`
+		AvaragePrice float32   `json:"avaragePrice"` // на тестовое задание будет float, но на продакшене лучше использовать string/int
 	}
 )
 
@@ -73,8 +80,9 @@ func (collector *Collector) Run() (err error) {
 
 func (collector *Collector) fiat() (err error) {
 	req := fasthttp.AcquireRequest()
-	req.Header.SetMethod("GET")
-	req.Header.Set("Content-Type", "application/xml")
+	req.Header.SetMethod(fasthttp.MethodGet)
+	req.Header.Set(fasthttp.HeaderContentType, "application/xml")
+	req.SetRequestURI(collector.config.FiatEndPoint)
 	defer fasthttp.ReleaseRequest(req)
 
 	resp := fasthttp.AcquireResponse()
@@ -111,8 +119,9 @@ func (collector *Collector) fiat() (err error) {
 
 	insertFiat := [][]interface{}{}
 	for i := range fiat.Valute {
-		if _, ok := vl[fiat.Valute[i].FiatID]; ok {
-			insertFiat = append(insertFiat, []interface{}{vl[fiat.Valute[i].FiatID], fiat.Date, fiat.Valute[i].Value})
+		id, ok := vl[fiat.Valute[i].FiatID]
+		if ok {
+			insertFiat = append(insertFiat, []interface{}{id, fiat.Date, fiat.Valute[i].Value})
 		} else {
 			err = collector.DB.QueryRow(
 				context.Background(),
@@ -133,6 +142,115 @@ func (collector *Collector) fiat() (err error) {
 		[]string{"fiat_id", "date", "value"},
 		pgx.CopyFromRows(insertFiat),
 	)
+
+	return
+}
+
+func (collector *Collector) btcusdt() (err error) {
+	req := fasthttp.AcquireRequest()
+	req.Header.SetMethod(fasthttp.MethodGet)
+	req.Header.Set(fasthttp.HeaderContentType, "application/json")
+	req.SetRequestURI(collector.config.CryptoEndPoint)
+	defer fasthttp.ReleaseRequest(req)
+
+	resp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseRequest(req)
+
+	err = collector.CryptoClient.Do(req, resp)
+	if err != nil {
+		return
+	}
+
+	btcUsdt := BtcUsdt{}
+	err = json.Unmarshal(resp.Body(), &btcUsdt)
+	if err != nil {
+		return
+	}
+
+	// Получаем предыдущую цену, если она есть
+	row, err := collector.DB.Query(
+		context.Background(),
+		"select avarage_price from btc_usdt order by date desc limit 1",
+	)
+	row.Close()
+	if err != nil {
+		return
+	}
+
+	var oldPrice float32
+	if row.Next() {
+		err = row.Scan(&oldPrice)
+		if err != nil {
+			return
+		}
+	}
+	// ===============
+
+	if btcUsdt.AvaragePrice == oldPrice {
+		return
+	}
+
+	// записываем новый курс в таблицу
+	err = collector.DB.QueryRow(
+		context.Background(),
+		"insert into btc_usdt (date, avarage_price) values ($1, $2) returning id",
+		btcUsdt.Time, btcUsdt.AvaragePrice,
+	).Scan(&btcUsdt.ID)
+	if err != nil {
+		return
+	}
+
+	// Перерасчет к фиатам
+	valuteList := make([]Valute, 10)
+	valute := Valute{}
+
+	rows, err := collector.DB.Query(
+		context.Background(),
+		"select id, code from fiat",
+	)
+	defer rows.Close()
+	if err != nil {
+		return err
+	}
+
+	for rows.Next() {
+		err = rows.Scan(&valute.ID, &valute.Code)
+		if err != nil {
+			return err
+		}
+
+		valuteList = append(valuteList, valute)
+	}
+
+	// На данный момент есть список всех фиатов, которые есть
+	for i := range valuteList {
+		// Собираем все курсы фиатных валют на данный момент
+		err = collector.DB.QueryRow(
+			context.Background(),
+			"select value from fiat_history where fiat_id=$1 order by date desc limit 1",
+			valuteList[i].ID,
+		).Scan(&valuteList[i].Value)
+		if err != nil {
+			return
+		}
+
+		// Делаем перерасчет
+		_, err = collector.DB.Exec(
+			context.Background(),
+			"insert into btc_usdt_history (btc_usdt_id, fiat_id, value) values ($1, $2, $3)",
+			btcUsdt.ID, valuteList[i].ID, btcUsdt.AvaragePrice*valuteList[i].Value,
+		)
+		if err != nil {
+			return
+		}
+	}
+
+	// (BTC -> USD) -> RUB -> в базу
+
+	return
+}
+
+func (bu *BtcUsdt) recalculation() (err error) {
 
 	return
 }
