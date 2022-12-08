@@ -120,12 +120,7 @@ func (collector *collector) fiat() (err error) {
 		}
 	}
 
-	_, err = collector.DB.CopyFrom(
-		context.Background(),
-		pgx.Identifier{"fiat_history"},
-		[]string{"fiat_id", "date", "value"},
-		pgx.CopyFromRows(insertFiat),
-	)
+	err = database.InsertFiatCopyFrom(collector.DB, insertFiat)
 
 	return
 }
@@ -143,7 +138,7 @@ func (collector *collector) btcusdt() (err error) {
 	}
 
 	oldPrice, err := database.SelectAPBtcUsdt(collector.DB)
-	if err != nil {
+	if err != nil && err != pgx.ErrNoRows {
 		return
 	}
 

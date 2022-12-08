@@ -4,9 +4,48 @@ import (
 	"context"
 
 	"github.com/LineEast/crypto-tracker/service/internal/models"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+func SelectBtcUsdtLast(db *pgxpool.Pool, btcusdt *models.BtcUsdt) (err error) {
+	row := db.QueryRow(
+		context.Background(),
+		"select date, avarage_price from btc_usdt order by date desc limit 1",
+	)
+
+	err = row.Scan(&btcusdt.Time, &btcusdt.AvaragePrice)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+func SelectBtcUsdt(db *pgxpool.Pool) (btcusdtList []models.BtcUsdt, err error) {
+	rows, err := db.Query(
+		context.Background(),
+		"select date, avarage_price from btc_usdt order by date",
+	)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	btcusdt := models.BtcUsdt{}
+	for rows.Next() {
+		err = rows.Scan(&btcusdt.Time, &btcusdt.AvaragePrice)
+		if err != nil {
+			return
+		}
+
+		btcusdtList = append(btcusdtList, btcusdt)
+	}
+	if err != nil {
+		return
+	}
+
+	return
+}
 
 // Получаем предыдущую цену, если она есть
 func SelectAPBtcUsdt(db *pgxpool.Pool) (oldPrice float32, err error) {
@@ -16,7 +55,7 @@ func SelectAPBtcUsdt(db *pgxpool.Pool) (oldPrice float32, err error) {
 	)
 
 	err = row.Scan(&oldPrice)
-	if err != nil && err != pgx.ErrNoRows {
+	if err != nil {
 		return
 	}
 

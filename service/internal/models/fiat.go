@@ -15,4 +15,9 @@ type (
 		Code   string  `xml:"CharCode"`
 		Value  float32 `xml:"Value"`
 	}
+
+	FiatHistory struct {
+		Date   time.Time `json:"date"`
+		Valute Valute    `json:"valute"`
+	}
 )
